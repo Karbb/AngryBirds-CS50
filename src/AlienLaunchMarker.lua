@@ -30,6 +30,10 @@ function AlienLaunchMarker:init(world)
 
     -- our alien we will eventually spawn
     self.alien = nil
+
+    -- CS50: Splitting useful state
+    self.collided = false
+    self.splitted = false
 end
 
 function AlienLaunchMarker:update(dt)
@@ -106,6 +110,45 @@ function AlienLaunchMarker:render()
         
         love.graphics.setColor(255, 255, 255, 255)
     else
-        self.alien:render()
+        if self.splitted then
+            for k, alien in pairs(self.alien) do
+                alien:render()
+            end
+        else
+            self.alien:render()
+        end
     end
+end
+
+function AlienLaunchMarker:cloneAlien()
+
+    local oldAlien = self.alien
+    local alien = Alien(self.world, 'round', oldAlien.body:getX(), oldAlien.body:getY(), 'Player')
+
+    alien.body:setLinearVelocity(oldAlien.body:getLinearVelocity())
+
+    alien.fixture:setRestitution(0.4)
+    alien.body:setAngularDamping(1)
+
+    return alien
+end
+
+function AlienLaunchMarker:splitAlien()
+    local alien1 = self:cloneAlien()
+    local alien2 = self:cloneAlien()
+    local alien3 = self:cloneAlien()
+
+    self.alien.body:destroy()
+
+    self.alien = {}
+
+    alien1.body:setX( alien1.body:getX() + 35/2 )
+    alien2.body:setY( alien2.body:getY() + 35/2 )
+    alien3.body:setY( alien3.body:getY() - 35/2 )
+
+    table.insert(self.alien, alien1)
+    table.insert(self.alien, alien2)
+    table.insert(self.alien, alien3)
+
+    self.splitted = true
 end

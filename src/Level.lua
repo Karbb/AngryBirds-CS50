@@ -43,6 +43,8 @@ function Level:init()
                     table.insert(self.destroyedBodies, b:getBody())
                 end
             end
+
+            self.launchMarker.collided = true
         end
 
         -- if we collided between an obstacle and an alien, as by debris falling...
@@ -85,6 +87,8 @@ function Level:init()
                     table.insert(self.destroyedBodies, a:getBody())
                 end
             end
+
+            self.launchMarker.collided = true
         end
 
         -- if we hit the ground, play a bounce sound
@@ -142,6 +146,8 @@ function Level:init()
 
     -- background graphics
     self.background = Background()
+
+    Signal.clear('space')
 end
 
 function Level:update(dt)
@@ -184,20 +190,52 @@ function Level:update(dt)
 
     -- replace launch marker if original alien stopped moving
     if self.launchMarker.launched then
-        local xPos, yPos = self.launchMarker.alien.body:getPosition()
-        local xVel, yVel = self.launchMarker.alien.body:getLinearVelocity()
-        
-        -- if we fired our alien to the left or it's almost done rolling, respawn
-        if xPos < 0 or (math.abs(xVel) + math.abs(yVel) < 1.5) then
-            self.launchMarker.alien.body:destroy()
-            self.launchMarker = AlienLaunchMarker(self.world)
+        if not self.launchMarker.splitted then
+            local xPos, yPos = self.launchMarker.alien.body:getPosition()
+            local xVel, yVel = self.launchMarker.alien.body:getLinearVelocity()
+            
+            -- if we fired our alien to the left or it's almost done rolling, respawn
+            if xPos < 0 or (math.abs(xVel) + math.abs(yVel) < 1.5) then
+                self.launchMarker.alien.body:destroy()
+                self.launchMarker = AlienLaunchMarker(self.world) 
 
-            -- re-initialize level if we have no more aliens
-            if #self.aliens == 0 then
-                gStateMachine:change('start')
+                -- re-initialize level if we have no more aliens
+                if #self.aliens == 0 then
+                    gStateMachine:change('start')
+                end
             end
+
+            Signal.register('space', function ()
+                if not self.launchMarker.collided and not self.launchMarker.splitted then
+                        self.launchMarker:splitAlien()                  
+                end
+            end)
+
+        else
+            for k, alien in pairs(self.launchMarker.alien) do
+                local xPos, yPos = alien.body:getPosition()
+                local xVel, yVel = alien.body:getLinearVelocity()
+            
+                -- if we fired our alien to the left or it's almost done rolling, respawn
+                if xPos < 0 or (math.abs(xVel) + math.abs(yVel) < 1.5) then
+                    alien.body:destroy()
+                    table.remove(self.launchMarker.alien, k)
+                end
+            end
+
+            if #self.launchMarker.alien == 0 then
+                self.launchMarker.alien = nil
+                self.launchMarker = AlienLaunchMarker(self.world)
+
+                -- re-initialize level if we have no more aliens
+                if #self.aliens == 0 then
+                    gStateMachine:change('start')
+                end
+            end            
         end
     end
+
+    
 end
 
 function Level:render()

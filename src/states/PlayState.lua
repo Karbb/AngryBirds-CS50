@@ -37,6 +37,8 @@ function PlayState:update(dt)
             -- only update background if we were able to scroll the level
             self.level.background:update(dt)
         end
+    elseif love.keyboard.isDown('space') then
+        Signal.emit('space')
     end
 
     self.level:update(dt)
